@@ -25,3 +25,20 @@ replay_pid*
 
 # Claude Code local config
 .claude/
+
+# Metis 运行时（agent 工作区/状态/记忆）
+server/.metis/
+.metis/
+
+# Maven
+target/
+
+# Node / 前端构建产物
+desktop/node_modules/
+desktop/dist/
+
+# WPF 壳构建产物
+desktop/windows/.build/
+desktop/windows/Metis.Desktop/bin/
+desktop/windows/Metis.Desktop/obj/
+desktop/windows/Metis.Desktop/Resources/webdist/

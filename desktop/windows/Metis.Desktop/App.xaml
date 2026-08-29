@@ -1,0 +1,11 @@
+<Application x:Class="Metis.Desktop.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnMainWindowClose">
+  <Application.Resources>
+    <SolidColorBrush x:Key="TitleBarBackground" Color="#17171A" />
+    <SolidColorBrush x:Key="TitleBarForeground" Color="#E8E8EA" />
+    <SolidColorBrush x:Key="TitleBarButtonHover" Color="#2A2A2E" />
+    <SolidColorBrush x:Key="TitleBarCloseHover" Color="#E81123" />
+  </Application.Resources>
+</Application>

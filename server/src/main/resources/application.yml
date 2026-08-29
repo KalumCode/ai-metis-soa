@@ -1,0 +1,24 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: metis-server
+
+logging:
+  level:
+    io.agentscope: INFO
+    io.kalum.metis: DEBUG
+
+metis:
+  model:
+    # OpenAI 兼容协议网关，API key 从环境变量读取
+    base-url: ${METIS_MODEL_BASE_URL:http://192.168.19.172:8888/v1}
+    name: ${METIS_MODEL_NAME:glm-5.3-flash}
+    api-key-env: ${METIS_MODEL_API_KEY_ENV:ARK_API_KEY}
+  agent:
+    # 工作区：AGENTS.md（人格）与 MEMORY.md（长期记忆）落盘位置，已 gitignore
+    workspace: ${METIS_WORKSPACE:.metis/workspace}
+    max-iters: 25
+    compaction-trigger-messages: 30
+    compaction-keep-messages: 10
