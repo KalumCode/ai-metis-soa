@@ -29,5 +29,10 @@ public record MetisProperties(Model model, Agent agent) {
             /** 触发上下文压缩的消息条数阈值。 */
             Integer compactionTriggerMessages,
             /** 压缩后保留的近端消息条数。 */
-            Integer compactionKeepMessages) {}
+            Integer compactionKeepMessages,
+            /**
+             * 权限模式：DEFAULT / ACCEPT_EDITS / EXPLORE / BYPASS / DONT_ASK，
+             * 语义见 io.agentscope.core.permission.PermissionMode。默认 BYPASS。
+             */
+            String permissionMode) {}
 }
