@@ -22,3 +22,7 @@ metis:
     max-iters: 25
     compaction-trigger-messages: 30
     compaction-keep-messages: 10
+    # 权限模式：DEFAULT / ACCEPT_EDITS / EXPLORE / BYPASS / DONT_ASK
+    # BYPASS：除显式 deny 规则外全部放行（当前默认，deny 规则不可绕过）
+    # DONT_ASK：只有命中 allow 规则的工具会执行，其余静默拒绝（无人值守收紧模式）
+    permission-mode: ${METIS_PERMISSION_MODE:BYPASS}
