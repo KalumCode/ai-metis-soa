@@ -1,11 +1,14 @@
 package io.kalum.metis.agent;
 
 import io.agentscope.core.model.Model;
+import io.agentscope.core.skill.repository.ClasspathSkillRepository;
+import io.agentscope.core.tool.Toolkit;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import io.agentscope.extensions.model.openai.formatter.OpenAIChatFormatter;
 import io.agentscope.harness.agent.HarnessAgent;
 import io.agentscope.harness.agent.memory.compaction.CompactionConfig;
 import io.kalum.metis.agent.middleware.RunLoggingMiddleware;
+import io.kalum.metis.agent.tools.MetisTools;
 import io.kalum.metis.config.MetisProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +23,9 @@ import java.util.Objects;
  * <ul>
  *   <li>模型：火山方舟（OpenAI 兼容协议），base URL 与模型名来自配置
  *   <li>工作区：人格（AGENTS.md）与长期记忆（MEMORY.md）的落盘位置
+ *   <li>技能：classpath 技能仓库（{@code resources/skills/}），随 JAR 发布，
+ *       重装 / 重建工作区后依然默认初始化
+ *   <li>工具：{@link MetisTools}（当前时间、工作区文件清单）注册到 Toolkit
  *   <li>上下文压缩：超过阈值自动摘要，保证上下文有界
  *   <li>middleware：{@link io.kalum.metis.agent.middleware.RunLoggingMiddleware}
  *       输出运行链路日志（reply / 推理 / 模型调用 / 工具调用）并注入当前时间
@@ -38,12 +44,16 @@ public final class MetisAgentFactory {
         MetisProperties.Model modelConfig = properties.model();
         MetisProperties.Agent agentConfig = properties.agent();
 
+        Path workspace = resolveWorkspace(agentConfig);
+
         return HarnessAgent.builder()
                 .name("metis")
                 .model(buildModel(modelConfig))
                 .sysPrompt(MetisSystemPrompt.build())
                 .middleware(new RunLoggingMiddleware())
-                .workspace(resolveWorkspace(agentConfig))
+                .workspace(workspace)
+                .toolkit(buildToolkit(workspace))
+                .skillRepository(buildSkillRepository())
                 .maxIters(resolveMaxIters(agentConfig))
                 .compaction(
                         CompactionConfig.builder()
@@ -54,6 +64,22 @@ public final class MetisAgentFactory {
                                         orDefault(agentConfig.compactionKeepMessages(), 10))
                                 .build())
                 .build();
+    }
+
+    /** 构建 Toolkit：注册 Metis 自定义工具，harness 内置工具在 build 时一并注册。 */
+    static Toolkit buildToolkit(Path workspace) {
+        Toolkit toolkit = new Toolkit();
+        toolkit.registerTool(new MetisTools(workspace));
+        return toolkit;
+    }
+
+    /** 构建 classpath 技能仓库：读取 JAR 内 resources/skills/ 下的技能目录。 */
+    static ClasspathSkillRepository buildSkillRepository() {
+        try {
+            return new ClasspathSkillRepository("skills");
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("初始化 classpath 技能仓库失败: resources/skills", e);
+        }
     }
 
     /** 构建火山方舟模型（OpenAI 兼容协议）。 */
