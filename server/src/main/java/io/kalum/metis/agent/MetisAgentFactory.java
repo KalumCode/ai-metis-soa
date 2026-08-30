@@ -5,6 +5,7 @@ import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import io.agentscope.extensions.model.openai.formatter.OpenAIChatFormatter;
 import io.agentscope.harness.agent.HarnessAgent;
 import io.agentscope.harness.agent.memory.compaction.CompactionConfig;
+import io.kalum.metis.agent.middleware.RunLoggingMiddleware;
 import io.kalum.metis.config.MetisProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +21,8 @@ import java.util.Objects;
  *   <li>模型：火山方舟（OpenAI 兼容协议），base URL 与模型名来自配置
  *   <li>工作区：人格（AGENTS.md）与长期记忆（MEMORY.md）的落盘位置
  *   <li>上下文压缩：超过阈值自动摘要，保证上下文有界
+ *   <li>middleware：{@link io.kalum.metis.agent.middleware.RunLoggingMiddleware}
+ *       输出运行链路日志（reply / 推理 / 模型调用 / 工具调用）并注入当前时间
  * </ul>
  */
 public final class MetisAgentFactory {
@@ -39,6 +42,7 @@ public final class MetisAgentFactory {
                 .name("metis")
                 .model(buildModel(modelConfig))
                 .sysPrompt(MetisSystemPrompt.build())
+                .middleware(new RunLoggingMiddleware())
                 .workspace(resolveWorkspace(agentConfig))
                 .maxIters(resolveMaxIters(agentConfig))
                 .compaction(
