@@ -9,6 +9,8 @@ export interface ChatRequest {
 
 export interface ChatParams {
   sessionId: string;
+  /** 用户 ID，用于后端取用户信息（未传时后端兜底为 10000）。 */
+  userId?: string;
   agent?: string;
   sourceChannel?: string;
   message?: string;

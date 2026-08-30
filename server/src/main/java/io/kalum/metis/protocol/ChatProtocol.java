@@ -51,6 +51,7 @@ public final class ChatProtocol {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ChatParams(
             String sessionId,
+            String userId,
             String agent,
             String sourceChannel,
             String message,

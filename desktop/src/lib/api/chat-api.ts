@@ -5,6 +5,7 @@ import { getBackendUrl } from "./backend-url";
 import type { ChatRequest, ChatResponse } from "@/types/conversation/chat-protocol";
 
 const SOURCE_CHANNEL = "601";
+const DEFAULT_USER_ID = "10000";
 
 export interface ChatStreamCallbacks {
   /** 收到一个协议响应事件。 */
@@ -32,6 +33,7 @@ function buildEnvelope(
     method,
     params: {
       sessionId,
+      userId: DEFAULT_USER_ID,
       sourceChannel: SOURCE_CHANNEL,
       ...(message !== undefined ? { message } : {}),
     },

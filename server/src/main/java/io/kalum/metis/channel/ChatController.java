@@ -2,6 +2,7 @@ package io.kalum.metis.channel;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.agentscope.core.event.AgentEventType;
 import io.agentscope.harness.agent.HarnessAgent;
 import io.agentscope.harness.agent.gateway.channel.chatui.ChatUiChannel;
 import io.agentscope.harness.agent.gateway.channel.chatui.SendOptions;
@@ -46,7 +47,7 @@ import reactor.core.publisher.Sinks;
 public class ChatController {
 
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final String DEFAULT_USER_ID = "metis-user";
+    private static final String DEFAULT_USER_ID = "10000";
 
     private final ChatUiChannel chat;
 
@@ -115,6 +116,8 @@ public class ChatController {
                 activeRuns.remove(sessionId, run);
             }
         });
+
+        //AgentEventType
     }
 
     private Flux<ServerSentEvent<String>> stop(String xYunId, String sessionId) {
@@ -136,8 +139,8 @@ public class ChatController {
     }
 
     private static String resolveUserId(ChatRequest request) {
-        String sourceChannel = request.params().sourceChannel();
-        return sourceChannel != null && !sourceChannel.isBlank() ? sourceChannel : DEFAULT_USER_ID;
+        String userId = request.params().userId();
+        return userId != null && !userId.isBlank() ? userId : DEFAULT_USER_ID;
     }
 
     private static void validate(ChatRequest request) {
