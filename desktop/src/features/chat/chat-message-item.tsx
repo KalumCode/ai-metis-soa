@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Brain, ChevronDown, User } from "lucide-react";
+import { Brain, Check, ChevronDown, Copy, User } from "lucide-react";
 
 import type { ChatMessage } from "@/store/app-store";
 import { cn } from "@/shared/ui/class-name";
@@ -36,14 +36,49 @@ export function ChatMessageItem({ message }: { message: ChatMessage }) {
         {message.error ? (
           <div className="mt-1 text-xs text-red-400">{message.error}</div>
         ) : null}
-        <div className="mt-1 px-1 text-2xs text-app-text-faint">
-          {new Date(message.timestamp).toLocaleTimeString("zh-CN", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+        <div className="mt-1 flex items-center gap-1.5 px-1 text-2xs text-app-text-faint">
+          <span>
+            {new Date(message.timestamp).toLocaleTimeString("zh-CN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+          {!isUser && message.content ? <CopyButton text={message.content} /> : null}
         </div>
       </div>
     </div>
+  );
+}
+
+/** 复制按钮：复制成功后短暂显示为对勾。 */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // WebView2 非 secure context 等场景下回退到 execCommand
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={copied ? "已复制" : "复制"}
+      className="flex h-5 w-5 items-center justify-center rounded text-app-text-faint transition-colors hover:bg-app-panel-hover hover:text-app-text-dim"
+    >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+    </button>
   );
 }
 
