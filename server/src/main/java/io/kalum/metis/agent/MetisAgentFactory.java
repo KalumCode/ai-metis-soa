@@ -11,6 +11,7 @@ import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import io.agentscope.extensions.model.openai.formatter.OpenAIChatFormatter;
 import io.agentscope.harness.agent.HarnessAgent;
 import io.agentscope.harness.agent.memory.compaction.CompactionConfig;
+import io.kalum.metis.agent.middleware.ModelSwitchMiddleware;
 import io.kalum.metis.agent.middleware.RunLoggingMiddleware;
 import io.kalum.metis.agent.tools.MetisTools;
 import io.kalum.metis.config.MetisProperties;
@@ -56,6 +57,7 @@ public final class MetisAgentFactory {
                 .model(buildModel(modelConfig))
                 .sysPrompt(MetisSystemPrompt.build())
                 .middleware(new RunLoggingMiddleware())
+                .middleware(new ModelSwitchMiddleware(modelConfig))
                 .workspace(workspace)
                 .toolkit(buildToolkit(workspace))
                 .skillRepository(buildSkillRepository())
@@ -150,13 +152,17 @@ public final class MetisAgentFactory {
         }
     }
 
-    /** 构建火山方舟模型（OpenAI 兼容协议）。 */
+    /** 构建火山方舟模型（OpenAI 兼容协议），模型名取配置。 */
     static Model buildModel(MetisProperties.Model config) {
+        return buildModelWithName(config,
+                config != null && notBlank(config.name()) ? config.name() : DEFAULT_MODEL);
+    }
+
+    /** 构建火山方舟模型（OpenAI 兼容协议），模型名由调用方指定（按请求切换模型用）。 */
+    public static Model buildModelWithName(MetisProperties.Model config, String modelName) {
         String baseUrl = config != null && notBlank(config.baseUrl())
                 ? config.baseUrl()
                 : DEFAULT_BASE_URL;
-        String modelName =
-                config != null && notBlank(config.name()) ? config.name() : DEFAULT_MODEL;
         String apiKeyEnv =
                 config != null && notBlank(config.apiKeyEnv())
                         ? config.apiKeyEnv()

@@ -55,6 +55,8 @@ public final class ChatProtocol {
             String agent,
             String sourceChannel,
             String message,
+            /** 可选模型名覆盖；为空时使用服务端默认模型。 */
+            String model,
             List<Attachment> attachments,
             ContinuationInfo continuationInfo,
             Long requestTime,

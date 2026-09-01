@@ -4,9 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.event.AgentEventType;
 import io.agentscope.harness.agent.HarnessAgent;
-import io.agentscope.harness.agent.gateway.channel.chatui.ChatUiChannel;
-import io.agentscope.harness.agent.gateway.channel.chatui.SendOptions;
 import io.kalum.metis.agent.MetisAgentFactory;
+import io.kalum.metis.agent.middleware.ModelSwitchMiddleware;
 import io.kalum.metis.config.MetisProperties;
 import io.kalum.metis.protocol.ChatProtocol;
 import io.kalum.metis.protocol.ChatProtocol.ChatRequest;
@@ -33,9 +32,9 @@ import reactor.core.publisher.Sinks;
  * <p>实现说明：
  *
  * <ul>
- *   <li>chat.send -- 经 {@link ChatUiChannel#sendStream} 驱动 agent，事件经
+ *   <li>chat.send -- 经 {@link HarnessAgent#streamEvents} 驱动 agent，事件经
  *       {@link ChatEventMapper} 映射为协议载荷；同一 (userId, sessionId) 的会话状态由
- *       harness 自动持久化。
+ *       harness 自动持久化。params.model 经 RuntimeContext 传入，可按请求切换模型。
  *   <li>chat.stop -- 取消该会话当前运行中的事件流（dispose 订阅）。
  *   <li>chat.continue -- 断线续传，需要服务端事件缓冲，暂未实现，返回 isError 事件。
  *   <li>params.agent 路由 -- 当前只有单 agent（metis），暂不参与路由。
@@ -49,15 +48,14 @@ public class ChatController {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String DEFAULT_USER_ID = "10000";
 
-    private final ChatUiChannel chat;
+    private final HarnessAgent agent;
 
     /** 运行中的会话流：sessionId -> 可取消的订阅。 */
     private final java.util.concurrent.ConcurrentHashMap<String, Disposable> activeRuns =
             new java.util.concurrent.ConcurrentHashMap<>();
 
     public ChatController(MetisProperties properties) {
-        HarnessAgent agent = MetisAgentFactory.create(properties);
-        this.chat = agent.channel(ChatUiChannel.create());
+        this.agent = MetisAgentFactory.create(properties);
     }
 
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -85,15 +83,28 @@ public class ChatController {
         }
 
         String userId = resolveUserId(request);
-        SendOptions options = sessionId != null && !sessionId.isBlank()
-                ? SendOptions.of(userId, sessionId)
-                : SendOptions.userId(userId);
+        // params.model 按请求切换模型：经 RuntimeContext 传入，由 ModelSwitchMiddleware 拦截模型调用
+        io.agentscope.core.agent.RuntimeContext.Builder ctxBuilder =
+                sessionId != null && !sessionId.isBlank()
+                        ? io.agentscope.core.agent.RuntimeContext.builder()
+                                .userId(userId).sessionId(sessionId)
+                        : io.agentscope.core.agent.RuntimeContext.builder().userId(userId);
+        String modelName = request.params().model();
+        if (modelName != null && !modelName.isBlank()) {
+            ctxBuilder.put(ModelSwitchMiddleware.CTX_MODEL_OVERRIDE, modelName.trim());
+        }
+
+        io.agentscope.core.message.Msg userMsg = io.agentscope.core.message.Msg.builder()
+                .role(io.agentscope.core.message.MsgRole.USER)
+                .textContent(message)
+                .build();
 
         ChatEventMapper mapper = new ChatEventMapper(xYunId, sessionId);
         Sinks.Many<ServerSentEvent<String>> sink =
                 Sinks.many().unicast().onBackpressureBuffer();
 
-        Disposable run = chat.sendStream(options, message)
+        Disposable run = agent
+                .streamEvents(java.util.List.of(userMsg), ctxBuilder.build())
                 .map(mapper::map)
                 .map(ChatController::toSse)
                 .subscribe(
