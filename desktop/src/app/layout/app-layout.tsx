@@ -4,6 +4,7 @@ import { ChatPage } from "@/features/chat/chat-page";
 import { CapabilityPage } from "@/features/capability/capability-page";
 import { ModelConfigPage } from "@/features/model-config/model-config-page";
 import { fetchAgents } from "@/lib/api/agent-api";
+import { fetchModelConfigs } from "@/lib/api/model-config-api";
 import { useAppStore } from "@/store/app-store";
 import type { AppTab } from "@/store/app-store";
 
@@ -16,15 +17,21 @@ export function AppLayout() {
   const tab = useAppStore((s) => s.tab);
   const setTab = useAppStore((s) => s.setTab);
   const setAgents = useAppStore((s) => s.setAgents);
+  const setModelConfigs = useAppStore((s) => s.setModelConfigs);
 
-  // 启动时拉取智能体列表
+  // 启动时拉取智能体列表与模型配置列表
   useEffect(() => {
     fetchAgents()
       .then(setAgents)
       .catch(() => {
         // 后端未启动时静默，界面展示空列表
       });
-  }, [setAgents]);
+    fetchModelConfigs()
+      .then(setModelConfigs)
+      .catch(() => {
+        // 后端未启动时静默，模型选择器只显示"默认模型"
+      });
+  }, [setAgents, setModelConfigs]);
 
   return (
     <main className="flex h-full w-full overflow-hidden">

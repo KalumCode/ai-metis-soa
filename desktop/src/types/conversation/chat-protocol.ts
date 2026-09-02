@@ -14,6 +14,8 @@ export interface ChatParams {
   agent?: string;
   sourceChannel?: string;
   message?: string;
+  /** 模型配置 id（GET /api/v1/model-configs）；不传时使用服务端默认模型。 */
+  model?: string;
   requestTime?: number;
 }
 

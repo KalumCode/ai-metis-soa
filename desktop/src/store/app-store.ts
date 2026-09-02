@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import type { AgentInfo } from "@/types/agent/agent-info";
+import type { ModelConfig } from "@/types/model-config/model-config";
 
 /** 左侧功能 tab。 */
 export type AppTab = "chat" | "capability" | "model";
@@ -41,6 +42,15 @@ interface AppStore {
   agents: AgentInfo[];
   setAgents: (agents: AgentInfo[]) => void;
 
+  /** 模型配置列表（来自 GET /api/v1/model-configs），不持久化。 */
+  modelConfigs: ModelConfig[];
+  /** 写入模型配置列表；选中配置已不存在时自动回退默认模型。 */
+  setModelConfigs: (configs: ModelConfig[]) => void;
+
+  /** 当前选中的模型配置 id；null = 服务端默认模型。全局共享，随 persist 持久化。 */
+  selectedModelId: string | null;
+  setSelectedModelId: (id: string | null) => void;
+
   /** 会话，按 updatedAt 倒序展示。 */
   sessions: ChatSession[];
   /** 当前选中会话 id。 */
@@ -69,6 +79,20 @@ export const useAppStore = create<AppStore>()(
 
       agents: [],
       setAgents: (agents) => set({ agents }),
+
+      modelConfigs: [],
+      setModelConfigs: (configs) =>
+        set((state) => ({
+          modelConfigs: configs,
+          // 选中配置被删除时回退默认模型
+          selectedModelId:
+            state.selectedModelId && configs.some((c) => c.id === state.selectedModelId)
+              ? state.selectedModelId
+              : null,
+        })),
+
+      selectedModelId: null,
+      setSelectedModelId: (id) => set({ selectedModelId: id }),
 
       sessions: [],
       activeSessionId: null,
@@ -149,6 +173,7 @@ export const useAppStore = create<AppStore>()(
       partialize: (state) => ({
         sessions: state.sessions,
         activeSessionId: state.activeSessionId,
+        selectedModelId: state.selectedModelId,
       }),
     },
   ),

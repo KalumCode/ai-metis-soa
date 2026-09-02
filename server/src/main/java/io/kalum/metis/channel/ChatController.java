@@ -7,10 +7,13 @@ import io.agentscope.harness.agent.HarnessAgent;
 import io.kalum.metis.agent.MetisAgentFactory;
 import io.kalum.metis.agent.middleware.ModelSwitchMiddleware;
 import io.kalum.metis.config.MetisProperties;
+import io.kalum.metis.model.ModelConfigStore;
 import io.kalum.metis.protocol.ChatProtocol;
 import io.kalum.metis.protocol.ChatProtocol.ChatRequest;
 import io.kalum.metis.protocol.ChatProtocol.ChatResponse;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
@@ -34,7 +37,8 @@ import reactor.core.publisher.Sinks;
  * <ul>
  *   <li>chat.send -- 经 {@link HarnessAgent#streamEvents} 驱动 agent，事件经
  *       {@link ChatEventMapper} 映射为协议载荷；同一 (userId, sessionId) 的会话状态由
- *       harness 自动持久化。params.model 经 RuntimeContext 传入，可按请求切换模型。
+ *       harness 自动持久化。params.model 为模型配置 id（模型配置管理维护），经 RuntimeContext
+ *       传入，按所选配置整体切换接入（baseUrl/apiKey/modelName）。
  *   <li>chat.stop -- 取消该会话当前运行中的事件流（dispose 订阅）。
  *   <li>chat.continue -- 断线续传，需要服务端事件缓冲，暂未实现，返回 isError 事件。
  *   <li>params.agent 路由 -- 当前只有单 agent（metis），暂不参与路由。
@@ -45,17 +49,21 @@ import reactor.core.publisher.Sinks;
 @RequestMapping("/api/v1/chat")
 public class ChatController {
 
+    private static final Logger log = LoggerFactory.getLogger(ChatController.class);
+
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String DEFAULT_USER_ID = "10000";
 
     private final HarnessAgent agent;
+    private final ModelConfigStore modelConfigs;
 
     /** 运行中的会话流：sessionId -> 可取消的订阅。 */
     private final java.util.concurrent.ConcurrentHashMap<String, Disposable> activeRuns =
             new java.util.concurrent.ConcurrentHashMap<>();
 
-    public ChatController(MetisProperties properties) {
+    public ChatController(MetisProperties properties, ModelConfigStore modelConfigs) {
         this.agent = MetisAgentFactory.create(properties);
+        this.modelConfigs = modelConfigs;
     }
 
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -89,9 +97,16 @@ public class ChatController {
                         ? io.agentscope.core.agent.RuntimeContext.builder()
                                 .userId(userId).sessionId(sessionId)
                         : io.agentscope.core.agent.RuntimeContext.builder().userId(userId);
-        String modelName = request.params().model();
-        if (modelName != null && !modelName.isBlank()) {
-            ctxBuilder.put(ModelSwitchMiddleware.CTX_MODEL_OVERRIDE, modelName.trim());
+        // params.model 为模型配置 id：解析为完整接入参数（baseUrl/apiKey/modelName）经
+        // RuntimeContext 传入，由 ModelSwitchMiddleware 拦截模型调用整体切换；
+        // 配置不存在时回退默认模型（可用性优先，不打断对话）
+        String model = request.params().model();
+        if (model != null && !model.isBlank()) {
+            modelConfigs.get(model.trim()).ifPresentOrElse(
+                    config -> ctxBuilder.put(ModelSwitchMiddleware.CTX_MODEL_OVERRIDE,
+                            new ModelSwitchMiddleware.ModelOverride(
+                                    config.baseUrl(), config.apiKey(), config.modelName())),
+                    () -> log.warn("模型配置不存在，回退默认模型: {}", model.trim()));
         }
 
         io.agentscope.core.message.Msg userMsg = io.agentscope.core.message.Msg.builder()
