@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 import type { AgentInfo } from "@/types/agent/agent-info";
 
 /** 左侧功能 tab。 */
-export type AppTab = "chat" | "capability";
+export type AppTab = "chat" | "capability" | "model";
 
 /** 一条对话消息。 */
 export interface ChatMessage {
