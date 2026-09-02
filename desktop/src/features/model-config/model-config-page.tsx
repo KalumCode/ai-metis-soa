@@ -5,6 +5,7 @@ import { ConfirmModal } from "./confirm-modal";
 import { ModelConfigFormModal } from "./model-config-form-modal";
 import { deleteModelConfig, fetchModelConfigs, testModelConfig } from "@/lib/api/model-config-api";
 import type { ModelConfig, ModelTestResult } from "@/types/model-config/model-config";
+import { useAppStore } from "@/store/app-store";
 import { cn } from "@/shared/ui/class-name";
 
 type ModalState =
@@ -14,6 +15,7 @@ type ModalState =
 
 /** 模型配置页：列表 + 添加 / 编辑 / 删除 + 连通性测试。 */
 export function ModelConfigPage() {
+  const setModelConfigs = useAppStore((s) => s.setModelConfigs);
   const [configs, setConfigs] = useState<ModelConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,10 @@ export function ModelConfigPage() {
   const reload = async () => {
     try {
       setError(null);
-      setConfigs(await fetchModelConfigs());
+      const configs = await fetchModelConfigs();
+      setConfigs(configs);
+      // 同步到全局 store，对话界面的模型选择器即时校正
+      setModelConfigs(configs);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

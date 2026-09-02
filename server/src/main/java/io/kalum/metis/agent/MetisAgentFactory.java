@@ -57,7 +57,7 @@ public final class MetisAgentFactory {
                 .model(buildModel(modelConfig))
                 .sysPrompt(MetisSystemPrompt.build())
                 .middleware(new RunLoggingMiddleware())
-                .middleware(new ModelSwitchMiddleware(modelConfig))
+                .middleware(new ModelSwitchMiddleware())
                 .workspace(workspace)
                 .toolkit(buildToolkit(workspace))
                 .skillRepository(buildSkillRepository())
@@ -176,6 +176,23 @@ public final class MetisAgentFactory {
 
         return OpenAIChatModel.builder()
                 .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .modelName(modelName)
+                .stream(true)
+                .formatter(new OpenAIChatFormatter())
+                .build();
+    }
+
+    /**
+     * 按完整接入参数构建模型（模型配置管理的选择切换用）。
+     *
+     * <p>与 {@link #buildModelWithName} 的区别：baseUrl / apiKey / modelName 全部来自
+     * {@link io.kalum.metis.model.ModelConfig}，不读 metis.model.* 与环境变量；
+     * apiKey 允许为空（本地网关常无鉴权，见 ModelConfigController 的校验约定）。
+     */
+    public static Model buildModel(String baseUrl, String apiKey, String modelName) {
+        return OpenAIChatModel.builder()
+                .apiKey(apiKey != null ? apiKey.trim() : "")
                 .baseUrl(baseUrl)
                 .modelName(modelName)
                 .stream(true)

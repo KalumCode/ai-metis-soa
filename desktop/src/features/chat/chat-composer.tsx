@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useRef, useState } from "react";
 import { SendHorizontal, Square } from "lucide-react";
 
+import { ModelSelector } from "./model-selector";
 import { cn } from "@/shared/ui/class-name";
 
 /** 输入区：Enter 发送 / Shift+Enter 换行；运行中显示停止按钮。 */
@@ -79,6 +80,9 @@ export function ChatComposer({
             <SendHorizontal className="h-4 w-4" />
           </button>
         )}
+      </div>
+      <div className="mx-auto mt-1.5 flex max-w-3xl">
+        <ModelSelector disabled={disabled} />
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ function buildEnvelope(
   method: ChatRequest["method"],
   sessionId: string,
   message?: string,
+  model?: string,
 ): ChatRequest {
   return {
     type: "req",
@@ -36,6 +37,7 @@ function buildEnvelope(
       userId: DEFAULT_USER_ID,
       sourceChannel: SOURCE_CHANNEL,
       ...(message !== undefined ? { message } : {}),
+      ...(model ? { model } : {}),
     },
   };
 }
@@ -49,9 +51,10 @@ export async function sendChat(
   sessionId: string,
   message: string,
   callbacks: ChatStreamCallbacks,
+  options?: { model?: string },
 ): Promise<ChatStreamHandle> {
   const controller = new AbortController();
-  const request = buildEnvelope("chat.send", sessionId, message);
+  const request = buildEnvelope("chat.send", sessionId, message, options?.model);
 
   void (async () => {
     try {

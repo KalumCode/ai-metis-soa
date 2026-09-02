@@ -17,6 +17,7 @@ import { useAppStore, useRunningStore } from "@/store/app-store";
 export function useChatStream(sessionId: string) {
   const upsertMessage = useAppStore((s) => s.upsertMessage);
   const patchMessage = useAppStore((s) => s.patchMessage);
+  const selectedModelId = useAppStore((s) => s.selectedModelId);
   const stopRunning = useRunningStore((s) => s.stopRunning);
   const handleRef = useRef<ChatStreamHandle | null>(null);
 
@@ -45,42 +46,47 @@ export function useChatStream(sessionId: string) {
         stopRunning(sessionId);
       };
 
-      return sendChat(sessionId, message, {
-        onEvent: (event) => {
-          const payload = event.payload;
-          if (payload.isError) {
-            content = content || "";
-            finalize(payload.text ?? "服务返回错误");
-            return;
-          }
-          if (payload.stream !== "assistant") {
-            return;
-          }
-          const kind = payload.data?.kind;
-          const delta = payload.delta ?? "";
-          // phase=final 时以 text 为准（比逐 delta 拼接更可靠）
-          if (payload.phase === "final" && payload.text !== undefined) {
-            if (kind === "thinking") {
-              thinking = payload.text;
-            } else {
-              content = payload.text;
+      return sendChat(
+        sessionId,
+        message,
+        {
+          onEvent: (event) => {
+            const payload = event.payload;
+            if (payload.isError) {
+              content = content || "";
+              finalize(payload.text ?? "服务返回错误");
+              return;
             }
-          } else if (delta) {
-            if (kind === "thinking") {
-              thinking += delta;
-            } else if (kind === "text") {
-              content += delta;
+            if (payload.stream !== "assistant") {
+              return;
             }
-          }
-          patchMessage(sessionId, assistantId, { content, thinking });
+            const kind = payload.data?.kind;
+            const delta = payload.delta ?? "";
+            // phase=final 时以 text 为准（比逐 delta 拼接更可靠）
+            if (payload.phase === "final" && payload.text !== undefined) {
+              if (kind === "thinking") {
+                thinking = payload.text;
+              } else {
+                content = payload.text;
+              }
+            } else if (delta) {
+              if (kind === "thinking") {
+                thinking += delta;
+              } else if (kind === "text") {
+                content += delta;
+              }
+            }
+            patchMessage(sessionId, assistantId, { content, thinking });
+          },
+          onDone: () => finalize(),
+          onError: (message) => finalize(message),
         },
-        onDone: () => finalize(),
-        onError: (message) => finalize(message),
-      }).then((handle) => {
+        selectedModelId ? { model: selectedModelId } : undefined,
+      ).then((handle) => {
         handleRef.current = handle;
       });
     },
-    [sessionId, upsertMessage, patchMessage, stopRunning],
+    [sessionId, upsertMessage, patchMessage, stopRunning, selectedModelId],
   );
 
   const stop = useCallback(() => {

@@ -55,7 +55,7 @@ public final class ChatProtocol {
             String agent,
             String sourceChannel,
             String message,
-            /** 可选模型名覆盖；为空时使用服务端默认模型。 */
+            /** 可选模型配置 id（模型配置管理维护）；为空或不存在时使用服务端默认模型。 */
             String model,
             List<Attachment> attachments,
             ContinuationInfo continuationInfo,

@@ -52,6 +52,12 @@ public class ModelConfigStore {
         return List.copyOf(configs);
     }
 
+    /** 按 id 查找配置（chat.send 的 params.model 传配置 id，用于按配置整体切换模型）。 */
+    public synchronized Optional<ModelConfig> get(String id) {
+        ensureLoaded();
+        return configs.stream().filter(config -> config.id().equals(id)).findFirst();
+    }
+
     public synchronized ModelConfig create(String baseUrl, String apiKey, String modelName) {
         ensureLoaded();
         ModelConfig config =
