@@ -127,7 +127,7 @@ public final class MetisAgentFactory {
             "memory_search", "memory_get", "memory_save",
             "session_search", "session_history", "session_list",
             "load_skill_through_path", "todo_write",
-            "get_current_time", "list_workspace_files"
+            "get_current_time", "list_workspace_files", "set_context_value"
         }) {
             builder.addAllowRule(
                     tool, new PermissionRule(tool, null, PermissionBehavior.ALLOW, "projectSettings"));

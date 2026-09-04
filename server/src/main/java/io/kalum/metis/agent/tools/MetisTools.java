@@ -1,5 +1,6 @@
 package io.kalum.metis.agent.tools;
 
+import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
 import java.io.IOException;
@@ -22,6 +23,14 @@ public final class MetisTools {
 
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /**
+     * 工具向 {@link RuntimeContext} 写入上下文数据的演示键。
+     *
+     * <p>{@code set_context_value} 工具写入，{@code RunLoggingMiddleware.onActing}
+     * 在工具执行完成后读取并打印——两者拿到的是同一次 reply 的同一个 ctx 实例。
+     */
+    public static final String CTX_CONTEXT_VALUE = "metis.context_value";
 
     private final Path workspaceRoot;
 
@@ -81,6 +90,33 @@ public final class MetisTools {
         } catch (IOException e) {
             return "读取目录失败: " + e.getMessage();
         }
+    }
+
+    /**
+     * 把一条上下文数据写入当前会话的 {@link RuntimeContext}。
+     *
+     * <p>演示"工具写、hook 读"的上下文传递机制：{@code ctx} 参数不带 {@code @ToolParam}
+     * 注解，由框架从当前 reply 的 RuntimeContext 自动注入（模型不感知、不需要传），
+     * 工具内 {@code ctx.put(...)} 写入的值对同一 reply 内的 middleware hook 可见——
+     * {@code RunLoggingMiddleware.onActing} 会在工具执行完成后读取并打印。
+     *
+     * @param value 要写入的上下文数据内容
+     * @param ctx 框架注入的当前调用运行时上下文（非模型参数）
+     * @return 写入结果说明
+     */
+    @Tool(name = "set_context_value",
+            description = "把一条上下文数据写入当前会话运行时（RuntimeContext），供运行链路 hook 读取")
+    public String setContextValue(
+            @ToolParam(name = "value", description = "要写入的上下文数据内容") String value,
+            RuntimeContext ctx) {
+        if (ctx == null) {
+            return "当前调用没有可用的 RuntimeContext，写入失败";
+        }
+        if (value == null || value.isBlank()) {
+            return "value 不能为空";
+        }
+        ctx.put(CTX_CONTEXT_VALUE, value.trim());
+        return "已写入上下文（key=" + CTX_CONTEXT_VALUE + "）: " + value.trim();
     }
 
     /** 把工作区相对路径解析为受限在工作区内的绝对路径，拦截越界访问。 */

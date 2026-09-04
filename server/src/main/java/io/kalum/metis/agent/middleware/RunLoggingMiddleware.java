@@ -9,6 +9,7 @@ import io.agentscope.core.middleware.AgentInput;
 import io.agentscope.core.middleware.MiddlewareBase;
 import io.agentscope.core.middleware.ModelCallInput;
 import io.agentscope.core.middleware.ReasoningInput;
+import io.kalum.metis.agent.tools.MetisTools;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -31,7 +32,9 @@ import reactor.core.publisher.Mono;
  *       {@code ctx.get("trace_id")} 读取），记录 reply 开始/结束、耗时与事件数
  *   <li>onReasoning -- 记录每轮推理的上下文消息数
  *   <li>onModelCall -- 记录每次模型 API 调用的模型与耗时
- *   <li>onActing -- 记录每次工具调用的工具名
+ *   <li>onActing -- 记录每次工具调用的工具名；工具执行完成后读取工具经
+ *       {@link RuntimeContext} 写入的上下文数据（{@code MetisTools.CTX_CONTEXT_VALUE}）并打印，
+ *       演示"工具写、hook 读"的上下文传递
  *   <li>onSystemPrompt -- Transformer 式注入当前时间，让模型感知实时上下文
  * </ul>
  *
@@ -99,7 +102,17 @@ public final class RunLoggingMiddleware implements MiddlewareBase {
                 .map(ToolUseBlock::getName)
                 .collect(Collectors.joining(", "));
         log.info("[{}] 工具调用 tools={}", ctx.get("trace_id"), tools);
-        return next.apply(input);
+        return next.apply(input)
+                // 工具执行完成后读取其写入 RuntimeContext 的数据并打印：
+                // set_context_value 工具经注入的 ctx 写入，与本 hook 持有同一实例，
+                // 因此执行结束（doFinally）后即可读到
+                .doFinally(signal -> {
+                    String contextValue = ctx.get(MetisTools.CTX_CONTEXT_VALUE);
+                    if (contextValue != null) {
+                        log.info("[{}] hook 读取到工具写入的上下文 {} = {}",
+                                ctx.get("trace_id"), MetisTools.CTX_CONTEXT_VALUE, contextValue);
+                    }
+                });
     }
 
     @Override
